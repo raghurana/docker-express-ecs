@@ -25,9 +25,10 @@ WORKDIR /app
 # Copy built application and dependencies from build stage
 COPY --from=build /app/dist ./dist
 COPY --from=build /app/node_modules ./node_modules
+COPY --from=build /app/.env ./.env
 
-# Expose port
-EXPOSE 3000
+# Exposed port from copied .env file
+EXPOSE 5000
 
 # Start the application
-CMD ["node", "dist/index.js"]
+CMD ["node", "--env-file=.env", "dist/index.js"]

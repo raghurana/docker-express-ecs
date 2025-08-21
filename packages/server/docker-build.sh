@@ -25,12 +25,7 @@ if [ $? -eq 0 ]; then
     echo "🚀 Starting container: $CONTAINER_NAME"
     
     # Run the container with environment variables
-    docker run -d \
-        --name $CONTAINER_NAME \
-        -p $PORT:3000 \
-        -e NODE_ENV=$NODE_ENV \
-        -e PORT=3000 \
-        $IMAGE_NAME
+    docker run -d --name $CONTAINER_NAME -p $PORT:5000 $IMAGE_NAME
     
     if [ $? -eq 0 ]; then
         echo "✅ Container started successfully"

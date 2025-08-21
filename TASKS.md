@@ -24,7 +24,7 @@
 - [ ] Create root-level `tsconfig.json` for workspace
 - [ ] Configure server-specific TypeScript settings
 - [ ] Set up path mapping and module resolution
-- [ ] Configure build output directory
+- [ ] Configure build output directory, which is dist
 
 ### 4. Express Server Implementation
 
@@ -38,25 +38,25 @@
 ### 5. Development Environment
 
 - [ ] Configure TSX for hot reloading
-- [ ] Set up nodemon configuration
+- [ ] Set up tsx configuration
 - [ ] Create development scripts in package.json
 - [ ] Configure environment variables
 
 ### 6. Docker Configuration
 
 - [ ] Create multi-stage Dockerfile
-  - [ ] First stage: Build stage with Node.js 22 slim
-  - [ ] Second stage: Production stage with Node.js 22 slim
+  - [ ] First stage: Build stage with Node.js 22
+  - [ ] Second stage: Runtime stage with Node.js 22 slim
 - [ ] Configure build context and dependencies
 - [ ] Set up production environment
 - [ ] Optimize Docker image size
 - [ ] Dockerfile must be able to accept command line args that get written to a .env file inside the container using envsubst command.
+- [ ] Second stage should only copy the dist and node_modules folder from the first build stage.
 
 ### 7. Docker Build and Run
 
 - [ ] Create Docker build script
 - [ ] Configure Docker run commands
-- [ ] Test Docker build process
 
 ### 8. Workspace Scripts
 
@@ -117,7 +117,9 @@ docker-express-env/
 
 ## Notes
 
-- Use Node.js 22 slim image for both Docker stages
+- Use Node.js 22 full image for build and slim image for runtime
+- Use built in --env-file option with node to load a .env file before running npm start script
+- npm start script should execute the start script in package.json that loads the env file and starts dist/index.js
 - Implement multi-stage Docker build for optimization
 - Configure TSX for development with hot reloading
 - Set up proper workspace package linking

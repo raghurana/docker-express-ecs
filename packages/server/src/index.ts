@@ -16,6 +16,9 @@ app.use((req: Request, res: Response, next: NextFunction) => {
 
 // Health check endpoint
 app.get("/health", (req: Request, res: Response) => {
+  console.log(
+    `🔍 Health check endpoint accessed - ${new Date().toISOString()}`
+  );
   res.status(200).json({
     status: "OK",
     timestamp: new Date().toISOString(),
@@ -26,6 +29,7 @@ app.get("/health", (req: Request, res: Response) => {
 
 // Basic route handlers
 app.get("/", (req: Request, res: Response) => {
+  console.log(`🏠 Root endpoint accessed - ${new Date().toISOString()}`);
   res.json({
     message: "Welcome to Docker Express TypeScript API",
     version: "1.0.0",
@@ -34,6 +38,7 @@ app.get("/", (req: Request, res: Response) => {
 });
 
 app.get("/api/status", (req: Request, res: Response) => {
+  console.log(`📊 API status endpoint accessed - ${new Date().toISOString()}`);
   res.json({
     status: "running",
     environment: NODE_ENV,
@@ -43,6 +48,11 @@ app.get("/api/status", (req: Request, res: Response) => {
 
 // No route found middleware
 app.use("*", (req: Request, res: Response) => {
+  console.log(
+    `❌ 404 - Route not found: ${req.method} ${
+      req.originalUrl
+    } - ${new Date().toISOString()}`
+  );
   res.status(404).json({
     error: "Route not found",
     path: req.originalUrl,

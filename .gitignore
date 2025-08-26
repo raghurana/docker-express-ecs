@@ -86,8 +86,6 @@ jspm_packages/
 # TypeScript cache
 *.tsbuildinfo
 
-# Docker
-.dockerignore
 
 # IDE
 .vscode/

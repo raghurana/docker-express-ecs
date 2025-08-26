@@ -13,6 +13,10 @@ RUN npm install
 # Copy source code
 COPY . .
 
+# Copy .env.sample and generate .env if it doesn't exist
+RUN mv .env.sample .env
+
+
 # Build the application
 RUN npm run build
 
@@ -30,5 +34,10 @@ COPY --from=build /app/.env ./.env
 # Exposed port from copied .env file
 EXPOSE 5000
 
+# Check the contents of the container
+RUN ls -la
+RUN ls -la dist
+RUN cat .env
+
 # Start the application
-CMD ["node", "--env-file=.env", "dist/index.js"]
+CMD ["node", "--env-file=.env", "dist/index"]

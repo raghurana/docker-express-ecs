@@ -2,317 +2,221 @@
 
 ## Overview
 
-This document outlines the implementation of a new ECS Fargate cluster for non-production workloads with minimal cost configuration. The solution will include an ECR registry for container image management, a load balancer frontend, and comprehensive health checking at both the container and load balancer levels.
+This document outlines the implementation of a new ECS Fargate cluster for non-production environments with minimal cost configuration. The cluster will be fronted by an Application Load Balancer (ALB) and include an ECR registry for container image management.
 
 ## Business Requirements
 
-- **Cost Optimization**: Minimal/cheap configuration suitable for non-production environments
-- **Container Management**: ECR registry for storing and managing container images
-- **Load Balancing**: Application Load Balancer (ALB) with target group routing to ECS tasks
-- **Health Monitoring**: Multi-level health checks for reliability and auto-recovery
-- **Infrastructure as Code**: CDK-based deployment leveraging existing patterns
+- **Environment**: Non-production account
+- **Region**: ap-southeast-2 (Sydney)
+- **Cost Optimization**: Minimal/cheap configuration
+- **Availability**: Single AZ deployment
+- **Container Registry**: ECR for image storage and management
+- **Load Balancing**: ALB with target group routing to ECS cluster
+- **Health Monitoring**: Container-level and load balancer-level health checks
+- **VPC**: Leverage existing VPC infrastructure (no new VPC provisioning)
 
 ## Technical Requirements
 
-### Core Infrastructure Components
+### ECS Fargate Cluster
 
-1. **VPC & Networking**
+- **Service Type**: Fargate (serverless)
+- **Capacity Provider**: FARGATE
+- **Desired Count**: 1 (minimal cost)
+- **CPU**: 0.25 vCPU (256 CPU units)
+- **Memory**: 0.5 GB (512 MB)
+- **Platform Version**: LATEST
 
-   - Private subnets for ECS tasks
-   - Public subnets for load balancer
-   - NAT Gateway for outbound internet access
-   - Security groups with minimal required permissions
+### ECR Registry
 
-2. **ECS Fargate Cluster**
+- **Repository Name**: `docker-express-env`
+- **Image Tagging**: Latest and versioned tags
+- **Lifecycle Policy**: Clean up untagged images older than 7 days
+- **Cross-Account Access**: Configured for non-prod account
 
-   - Serverless compute using Fargate
-   - Auto-scaling based on CPU/memory utilization
-   - Task definition with health check configuration
-   - Service discovery and load balancing integration
+### Application Load Balancer
 
-3. **ECR Registry**
+- **Type**: Application Load Balancer (ALB)
+- **Scheme**: Internet-facing
+- **Security Groups**: Allow HTTP (80) and HTTPS (443)
+- **Target Group**: ECS service target group
+- **Health Check Path**: `/health`
+- **Health Check Interval**: 30 seconds
+- **Healthy Threshold**: 2
+- **Unhealthy Threshold**: 3
 
-   - Private repository for container images
-   - Lifecycle policies for cost management
-   - Cross-account access if needed
+### Health Checks
 
-4. **Load Balancer**
+- **Container Level**: ECS task health check using `/health` endpoint
+- **Load Balancer Level**: ALB health check with same endpoint
+- **Grace Period**: 60 seconds for container startup
+- **Timeout**: 5 seconds for health check response
 
-   - Application Load Balancer (ALB)
-   - Target group with health check configuration
-   - SSL termination support
-   - Access logging
+### Security
 
-5. **Health Checks**
-   - Container-level health checks (ECS task health)
-   - Load balancer target group health checks
-   - CloudWatch alarms for monitoring
+- **IAM Roles**: ECS task execution and task running roles
+- **Security Groups**: Minimal required ports (80, 443)
+- **Encryption**: ECR images encrypted at rest
+- **Network**: Use existing VPC and subnets
 
-### Non-Functional Requirements
-
-- **Cost**: Target monthly cost < $50 for non-prod workloads
-- **Availability**: 99.5% uptime SLA
-- **Scalability**: Auto-scaling from 1 to 4 tasks based on demand
-- **Security**: Least privilege access, encrypted in transit and at rest
-- **Monitoring**: CloudWatch metrics and alarms for key health indicators
-
-## Architecture Design
-
-### High-Level Architecture
+## Architecture
 
 ```
-Internet → ALB → Target Group → ECS Fargate Tasks (Private Subnets)
+Internet → ALB → Target Group → ECS Fargate Service → Container
                 ↓
-            ECR Registry
-                ↓
-            VPC with NAT Gateway
+            ECR Registry ← Container Image Push
 ```
-
-### Component Details
-
-1. **VPC Stack**
-
-   - 2 AZs for high availability
-   - Public subnets for ALB and NAT Gateway
-   - Private subnets for ECS tasks
-   - Route tables for proper traffic routing
-
-2. **ECS Stack**
-
-   - Fargate cluster with minimal resource allocation
-   - Task definition with health check endpoint
-   - Service with auto-scaling policies
-   - CloudWatch log groups for application logs
-
-3. **Load Balancer Stack**
-
-   - ALB in public subnets
-   - Target group with health check path
-   - Security group allowing HTTP/HTTPS traffic
-   - Health check configuration matching application endpoints
-
-4. **ECR Stack**
-   - Private repository with lifecycle policies
-   - Cross-account permissions if needed
-   - Image scanning and vulnerability detection
 
 ## Implementation Plan
 
-### Phase 1: Foundation (Week 1)
+### Phase 1: Infrastructure Setup
 
-- [ ] Create VPC stack with networking components
-- [ ] Set up ECR repository with lifecycle policies
-- [ ] Configure security groups and IAM roles
+1. Create ECR repository with lifecycle policies
+2. Deploy ECS Fargate cluster
+3. Configure IAM roles and security groups
+4. Deploy Application Load Balancer
 
-### Phase 2: ECS Infrastructure (Week 2)
+### Phase 2: Service Configuration
 
-- [ ] Deploy ECS Fargate cluster
-- [ ] Create task definition with health checks
-- [ ] Configure ECS service with auto-scaling
+1. Create ECS service definition
+2. Configure task definition with health checks
+3. Set up target group and listener rules
+4. Test health check endpoints
 
-### Phase 3: Load Balancer (Week 3)
+### Phase 3: Testing & Validation
 
-- [ ] Deploy Application Load Balancer
-- [ ] Configure target group and health checks
-- [ ] Set up SSL certificates and listeners
+1. Deploy container image to ECR
+2. Verify ECS service health
+3. Test load balancer health checks
+4. Validate end-to-end connectivity
 
-### Phase 4: Integration & Testing (Week 4)
+## CDK Implementation
 
-- [ ] Deploy sample application container
-- [ ] Test health checks and auto-scaling
-- [ ] Configure monitoring and alerting
-- [ ] Performance testing and cost optimization
-
-## Technical Specifications
-
-### ECS Task Configuration
+### Stack Structure
 
 ```typescript
-// Minimal Fargate configuration for cost optimization
-const taskDefinition = new ecs.FargateTaskDefinition(this, "TaskDef", {
-  memoryLimitMiB: 512, // 0.5 GB RAM
-  cpu: 256, // 0.25 vCPU
-  runtimePlatform: {
-    operatingSystemFamily: ecs.OperatingSystemFamily.LINUX,
-    cpuArchitecture: ecs.CpuArchitecture.X86_64,
-  },
-});
+// New stack: EcsFargateStack
+export class EcsFargateStack extends cdk.Stack {
+  constructor(scope: Construct, id: string, props?: cdk.StackProps) {
+    super(scope, id, props);
+
+    // ECR Repository
+    // ECS Cluster
+    // Load Balancer
+    // Target Group
+    // ECS Service
+    // Security Groups
+    // IAM Roles
+  }
+}
 ```
 
-### Load Balancer Health Check
+### Key Constructs
 
-```typescript
-// Health check configuration
-const targetGroup = new elbv2.ApplicationTargetGroup(this, "TargetGroup", {
-  port: 3000,
-  protocol: elbv2.ApplicationProtocol.HTTP,
-  targetType: elbv2.TargetType.IP,
-  healthCheck: {
-    path: "/health",
-    healthyHttpCodes: "200",
-    interval: Duration.seconds(30),
-    timeout: Duration.seconds(5),
-    healthyThresholdCount: 2,
-    unhealthyThresholdCount: 3,
-  },
-});
-```
+- `ecr.Repository` - Container image registry
+- `ecs.Cluster` - Fargate cluster
+- `ecs.FargateService` - ECS service
+- `elasticloadbalancingv2.ApplicationLoadBalancer` - ALB
+- `elasticloadbalancingv2.ApplicationTargetGroup` - Target group
+- `iam.Role` - Task execution and running roles
 
-### Auto-scaling Configuration
+## Cost Estimation
 
-```typescript
-// Cost-optimized auto-scaling
-const scaling = service.autoScaleTaskCount({
-  minCapacity: 1,
-  maxCapacity: 4,
-});
+### Monthly Costs (ap-southeast-2)
 
-scaling.scaleOnCpuUtilization("CpuScaling", {
-  targetUtilizationPercent: 70,
-  scaleInCooldown: Duration.seconds(60),
-  scaleOutCooldown: Duration.seconds(60),
-});
-```
+- **ECS Fargate**: ~$8-12/month (0.25 vCPU, 0.5GB RAM, 24/7)
+- **ECR**: ~$0.10/month (storage + data transfer)
+- **ALB**: ~$18/month (fixed cost)
+- **Data Transfer**: ~$1-5/month (depending on usage)
+- **Total Estimated**: ~$27-35/month
 
-## Cost Optimization Strategies
+### Cost Optimization Strategies
 
-1. **Resource Allocation**
-
-   - Start with minimal CPU (0.25 vCPU) and memory (0.5 GB)
-   - Use Spot instances for non-critical workloads
-   - Implement auto-scaling with conservative thresholds
-
-2. **ECR Cost Management**
-
-   - Lifecycle policies to delete old images
-   - Cross-account sharing to avoid duplication
-   - Image compression and optimization
-
-3. **Network Optimization**
-   - Single NAT Gateway (not per AZ)
-   - Minimal data transfer between AZs
-   - Efficient security group rules
-
-## Security Considerations
-
-1. **Network Security**
-
-   - Private subnets for ECS tasks
-   - Security groups with minimal required access
-   - VPC endpoints for AWS services
-
-2. **Container Security**
-
-   - ECR image scanning enabled
-   - Non-root user in containers
-   - Secrets management via AWS Secrets Manager
-
-3. **Access Control**
-   - IAM roles with least privilege
-   - Resource-based policies
-   - CloudTrail logging for audit
-
-## Monitoring & Observability
-
-1. **CloudWatch Metrics**
-
-   - ECS service metrics (CPU, memory, task count)
-   - ALB metrics (request count, latency, error rate)
-   - Custom application metrics
-
-2. **Alarms & Notifications**
-
-   - High CPU/memory utilization
-   - Unhealthy target count
-   - Service error rate thresholds
-
-3. **Logging**
-   - Application logs via CloudWatch Logs
-   - ALB access logs
-   - ECS task logs
-
-## Risk Assessment
-
-### High Risk
-
-- **Cost Overrun**: Mitigation through strict resource limits and monitoring
-- **Service Availability**: Mitigation through health checks and auto-scaling
-
-### Medium Risk
-
-- **Security Vulnerabilities**: Mitigation through regular updates and scanning
-- **Performance Issues**: Mitigation through load testing and optimization
-
-### Low Risk
-
-- **Deployment Complexity**: Mitigation through CDK patterns and documentation
+- Single AZ deployment
+- Minimal resource allocation
+- ECR lifecycle policies for image cleanup
+- Auto-scaling based on demand (future enhancement)
 
 ## Success Criteria
 
-1. **Functional Requirements**
+- [ ] ECS Fargate cluster successfully deployed
+- [ ] ECR repository accessible and functional
+- [ ] Load balancer health checks passing
+- [ ] Container health checks working
+- [ ] End-to-end connectivity verified
+- [ ] Cost within budget (<$50/month)
+- [ ] Health check endpoint responding correctly
 
-   - [ ] ECS Fargate cluster successfully deploys
-   - [ ] ECR registry accepts and stores container images
-   - [ ] Load balancer routes traffic to healthy ECS tasks
-   - [ ] Health checks pass at both container and ALB levels
+## Risk Assessment
 
-2. **Non-Functional Requirements**
+### Low Risk
 
-   - [ ] Monthly cost remains under $50
-   - [ ] 99.5% uptime achieved
-   - [ ] Auto-scaling responds to load changes
-   - [ ] Security requirements met
+- ECS Fargate deployment (well-established pattern)
+- ECR repository creation
+- Basic load balancer configuration
 
-3. **Operational Requirements**
-   - [ ] Monitoring and alerting configured
-   - [ ] Documentation completed
-   - [ ] Deployment process automated
-   - [ ] Team trained on operations
+### Medium Risk
+
+- Health check configuration complexity
+- Security group and IAM role setup
+- Integration between ALB and ECS
+
+### Mitigation Strategies
+
+- Use existing CDK patterns and constructs
+- Implement health checks incrementally
+- Test in isolated environment first
+- Document all configuration steps
 
 ## Dependencies
 
-1. **AWS Services**
+- Existing VPC infrastructure in ap-southeast-2
+- CDK v2.211.0 or higher
+- TypeScript 5.3.0+
+- AWS CLI configured for target account in ap-southeast-2
+- Container image ready for deployment
 
-   - ECS, ECR, VPC, ALB, CloudWatch
-   - IAM, Secrets Manager, CloudTrail
+## Future Enhancements
 
-2. **External Dependencies**
+- Multi-AZ deployment for production
+- Auto-scaling based on CPU/memory metrics
+- Blue-green deployment strategy
+- CloudWatch monitoring and alerting
+- Cost optimization through spot instances
+- Integration with CI/CD pipeline
 
-   - Container images ready for deployment
-   - SSL certificates for HTTPS
-   - DNS configuration for custom domains
+## Testing Strategy
 
-3. **Team Dependencies**
-   - DevOps/Infrastructure team availability
-   - Application team for container preparation
-   - Security team for compliance review
+### Unit Tests
 
-## Timeline & Milestones
+- CDK construct validation
+- IAM policy verification
+- Security group rule validation
 
-- **Week 1**: Foundation infrastructure (VPC, ECR, IAM)
-- **Week 2**: ECS cluster and task definitions
-- **Week 3**: Load balancer and health checks
-- **Week 4**: Integration, testing, and optimization
+### Integration Tests
 
-## Next Steps
+- ECR push/pull operations
+- ECS service deployment
+- Load balancer health checks
+- End-to-end HTTP requests
 
-1. **Immediate Actions**
+### Load Tests
 
-   - Review and approve this PRD
-   - Set up development environment
-   - Begin Phase 1 implementation
+- Container performance under load
+- Load balancer capacity
+- Health check responsiveness
 
-2. **Stakeholder Engagement**
+## Rollback Plan
 
-   - Infrastructure team for technical review
-   - Security team for compliance approval
-   - Finance team for cost approval
+1. **Immediate Rollback**: CDK destroy command
+2. **Partial Rollback**: Revert specific constructs
+3. **Data Preservation**: ECR images backed up
+4. **Service Continuity**: Minimal downtime during rollback
 
-3. **Resource Allocation**
-   - Assign development team members
-   - Schedule regular review meetings
-   - Plan for testing and deployment
+## Documentation Requirements
 
----
-
-_This PRD will be updated as implementation progresses and new requirements are identified._
+- Infrastructure as Code (CDK)
+- Deployment procedures
+- Troubleshooting guide
+- Cost monitoring setup
+- Security configuration details
+- Health check endpoint specifications

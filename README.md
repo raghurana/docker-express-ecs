@@ -17,6 +17,14 @@ docker-express-env/
 ├── package.json              # Root workspace configuration
 ├── tsconfig.json            # Root TypeScript configuration
 ├── packages/
+│   ├── infra/               # Infrastructure package (CDK)
+│   │   ├── agents/          # Infrastructure documentation & PRDs
+│   │   │   ├── README.md    # Infrastructure overview
+│   │   │   ├── TASKS.md     # Implementation task tracking
+│   │   │   └── ECS_FARGATE_CLUSTER_PRD.md # ECS requirements
+│   │   ├── lib/             # CDK stack definitions
+│   │   ├── bin/             # CDK app entry point
+│   │   └── package.json     # Infrastructure dependencies
 │   └── server/              # Express server package
 │       ├── package.json     # Server dependencies and scripts
 │       ├── tsconfig.json    # Server TypeScript config
@@ -34,6 +42,8 @@ docker-express-env/
 - Node.js 22 or higher
 - Docker (for containerized deployment)
 - npm or yarn
+- AWS CLI (for infrastructure deployment)
+- AWS CDK (for infrastructure as code)
 
 ### Installation
 
@@ -150,6 +160,24 @@ npm test
 
 # Run tests in specific package
 npm test --workspace=server
+```
+
+## 🏗️ Infrastructure
+
+The project includes AWS CDK infrastructure for deploying the Express server to ECS Fargate.
+
+### Infrastructure Documentation
+
+- **Overview**: See [packages/infra/agents/README.md](packages/infra/agents/README.md)
+- **Task Tracking**: See [packages/infra/agents/TASKS.md](packages/infra/agents/TASKS.md)
+- **ECS Requirements**: See [packages/infra/agents/ECS_FARGATE_CLUSTER_PRD.md](packages/infra/agents/ECS_FARGATE_CLUSTER_PRD.md)
+
+### Deploy Infrastructure
+
+```bash
+cd packages/infra
+npm run build
+cdk deploy
 ```
 
 ## 📦 Production Build

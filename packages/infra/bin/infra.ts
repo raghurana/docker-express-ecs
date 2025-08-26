@@ -1,10 +1,8 @@
 #!/usr/bin/env node
-import * as cdk from "aws-cdk-lib";
-import { InfraStack } from "../lib/infra-stack";
+import * as cdk from 'aws-cdk-lib';
+import { InfraStack } from '../lib/infra-stack';
 
 const app = new cdk.App();
-new InfraStack(app, "DockerExpressStack", {
-  env: {
-    region: "ap-southeast-2", // Deploy to Sydney region
-  },
+new InfraStack(app, 'DockerExpressStack', {
+  env: { region: 'ap-southeast-2' }, // Deploy to Sydney region
 });

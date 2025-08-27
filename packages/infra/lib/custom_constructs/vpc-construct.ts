@@ -17,9 +17,9 @@ export class VpcConstruct extends Construct {
 
     const { maxAzs = 1, natGateways = 0 } = props;
 
-    // Create a simple VPC for cost optimization (single AZ)
+    // Create a VPC with at least 2 AZs for ALB requirements
     this.vpc = new ec2.Vpc(this, 'DockerExpressVpc', {
-      maxAzs,
+      maxAzs: Math.max(maxAzs, 2), // Ensure at least 2 AZs for ALB
       natGateways,
       subnetConfiguration: [
         {

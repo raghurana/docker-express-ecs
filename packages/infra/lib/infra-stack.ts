@@ -16,8 +16,8 @@ export class InfraStack extends cdk.Stack {
     // Create ECR Repository
     const ecrConstruct = new EcrConstruct(this, 'EcrConstruct', {
       repositoryName: 'docker-express-env',
-      imageScanOnPush: true,
-      maxImageAge: cdk.Duration.days(7),
+      imageScanOnPush: false,
+      maxImageAge: cdk.Duration.days(3),
       removalPolicy: cdk.RemovalPolicy.DESTROY, // For non-prod environment
     });
 
@@ -47,6 +47,16 @@ export class InfraStack extends cdk.Stack {
     new cdk.CfnOutput(this, 'VpcId', {
       value: vpcConstruct.vpc.vpcId,
       description: 'VPC ID',
+    });
+
+    new cdk.CfnOutput(this, 'AlbDnsName', {
+      value: albConstruct.alb.loadBalancerDnsName,
+      description: 'ALB DNS Name',
+    });
+
+    new cdk.CfnOutput(this, 'AlbUrl', {
+      value: `http://${albConstruct.alb.loadBalancerDnsName}`,
+      description: 'ALB URL',
     });
   }
 }
